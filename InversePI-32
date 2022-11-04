@@ -254,6 +254,8 @@ SIGNMASK = 1 << (NEXP+NSIG)
 EXPMASK = (1 << NEXP) - 1
 SIGMASK = (1 << 23) - 1
 
+X0WIDTH = 8
+
 # Extract the sign, exponent, and significand fields.
 # Add the implied leading one bit to the significand.
 sign = (value & SIGNMASK) != 0
@@ -274,25 +276,25 @@ print("sign, exponent, significand: " + str(sign) + " " + str(exp) + " " + add_p
 
 # Get initial guess for the significand of the reciprocal:
 x0 = X0((value>>(NSIG-hNSIG) & hSIGMASK))
-print("x0 = " + add_point(bin(x0),8))
+print("x0 = " + add_point(bin(x0),X0WIDTH))
 
 # Iteration 1
 # - pi[1] has NSIG digits to the right of the binary point
-# - x0 has 8 digits to the right of the binary point
-# - x1a has NSIG+8 digits to the right of the binary point
+# - x0 has X0WIDTH digits to the right of the binary point
+# - x1a has NSIG+X0WIDTH digits to the right of the binary point
 x1a = sig * x0 # D * x0
-#print(add_point(bin(x1a),NSIG+8))
+#print(add_point(bin(x1a),NSIG+X0WIDTH))
 
-x1b = (2 << (NSIG+8)) - x1a # 2 - D*x0
-#print(add_point(bin(x1b),NSIG+8))
+x1b = (2 << (NSIG+X0WIDTH)) - x1a # 2 - D*x0
+#print(add_point(bin(x1b),NSIG+X0WIDTH))
 
-# x1 has NSIG+2*8 digits to the right of the binary point
+# x1 has NSIG+2*X0WIDTH digits to the right of the binary point
 x1 = x1b * x0 # x1 = (2 - D*x0) * x0
-print("x1 = " + add_point(bin(x1),(NSIG+2*8)))
+print("x1 = " + add_point(bin(x1),(NSIG+2*X0WIDTH)))
 
 # Truncate x1 to NSIG+1 bits to the right of the binary point
-x1 >>= (NSIG+2*8) - (NSIG+1) # 16 - 1
-print("After truncating x1 to NSIG+1 bits to the right of the binary point = " + add_point(bin(x1),(NSIG+1)))
+x1 >>= (NSIG+2*X0WIDTH) - (NSIG+1) # 2*X0WIDTH - 1
+print("After truncating x1 to " + str(NSIG+1) + " bits to the right of the binary point = " + add_point(bin(x1),(NSIG+1)))
 
 # Iteration 2
 # - pi[1] has NSIG digits to the right of the binary point
@@ -345,7 +347,7 @@ print("After renormalizing: x1 = " + add_point(bin(x2),NSIG) + ", rexp = " + str
 print("Verify product is close to 1:")
 p = sig * x2
 # Add a 2nd "_" to mark the end of (NSIG+1) bits of precision
-print("- product of significands: " + add_point(add_point(bin(p),46),NSIG+bit(p,2*NSIG+1)))
+print("- product of significands: " + add_point(add_point(bin(p),2*NSIG),NSIG+bit(p,2*NSIG+1)))
 print("- sum of exponents: " + str(exp+rexp))
 
 if (rexp < EMIN) or (EMAX < rexp):
