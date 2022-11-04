@@ -236,30 +236,39 @@ roundTowardZero = True if args.roundingAttribute == "roundTowardZero" else False
 value = eval(args.value)
 #print("value = " + str(value) + " (" + hex(value) + ")")
 
+NEXP = 8
+NSIG = 23
+BIAS = (1 << (NEXP-1)) - 1
+EMAX = BIAS
+EMIN = 1 - BIAS
+SIGNMASK = 1 << (NEXP+NSIG)
+EXPMASK = (1 << NEXP) - 1
+SIGMASK = (1 << 23) - 1
+
 # Extract the sign, exponent, and significand fields.
 # Add the implied leading one bit to the significand.
-sign = (value & 0x80000000) != 0
+sign = (value & SIGNMASK) != 0
 # Extract biased exponent value
-exp = (value >> 23) & 0xff
-# So far, can only process Normal numbers:
-if (exp == 0) or (exp == 255):
+exp = (value >> NSIG) & EXPMASK
+# So far, we can only process Normal numbers:
+if (exp == 0) or (exp == SIGNMASK):
   sys.exit("This script can't process NaNs, Infinities, Zeroes, or Subnormal numbers.")
 
 # Subtract BIAS value to get actual signed exponent
-exp -= 127
+exp -= BIAS
 # Compute starting exponent value for the reciprocal
 rexp = -exp
 # Extract significand and prepend the implicit leading 1 digit
-sig = (value & 0x7fffff) | (1 << 23)
+sig = (value & SIGMASK) | (1 << NSIG)
 # Show the user the values of the sign, unbiased exponent, and significand
-print("sign, exponent, significand: " + str(sign) + " " + str(exp) + " " + add_point(bin(sig),23))
+print("sign, exponent, significand: " + str(sign) + " " + str(exp) + " " + add_point(bin(sig),NSIG))
 
 # Get initial guess for the significand of the reciprocal:
 x0 = X0((value>>13) & 0x3FF)
 print("x0 = " + add_point(bin(x0),8))
 
 # Iteration 1
-# - pi[1] has 23 digits to the right of the binary point
+# - pi[1] has NSIG digits to the right of the binary point
 # - x0 has 8 digits to the right of the binary point
 # - x1a has 31 digits to the right of the binary point
 x1a = sig * x0 # D * x0
@@ -272,13 +281,13 @@ x1b = 0b10_0000000000000000000000000000000 - x1a # 2 - D*x0
 x1 = x1b * x0 # x1 = (2 - D*x0) * x0
 print("x1 = " + add_point(bin(x1),39))
 
-# Truncate x1 to 24 bits to the right of the binary point
-x1 >>= 39 - 24
-print("After truncating x1 to 25 bits = " + add_point(bin(x1),24))
+# Truncate x1 to NSIG+1 bits to the right of the binary point
+x1 >>= 39 - (NSIG+1)
+print("After truncating x1 to 25 bits = " + add_point(bin(x1),(NSIG+1)))
 
 # Iteration 2
-# - pi[1] has 23 digits to the right of the binary point
-# - x1 has 24 digits to the right of the binary point
+# - pi[1] has NSIG digits to the right of the binary point
+# - x1 has (NSIG+1) digits to the right of the binary point
 # - x2a has 47 digits to the right of the binary point
 x2a = sig * x1 # D * x1
 #print(add_point(bin(x2a),47))
@@ -296,7 +305,7 @@ if not bit(x2,71):
   x2 <<= 1
 print("After normalizing: x2 = " + add_point(add_point(add_point(add_point(bin(x2),71),49),48),47) + ", rexp = " + str(rexp))
 
-# Round x1 to 24 bits:
+# Round x1 to (NSIG+1) bits:
 # Step 1: Find the values needed to actually perform the rounding
 print("roundingAttribute is " + args.roundingAttribute)
 
@@ -313,26 +322,26 @@ print("remainingBitsAreNonzero is " + str(remainingBitsAreNonzero))
 roundBit = 1 if (roundTiesToEven and decidingBitIsOne and (lastKeptBitIsOdd or remainingBitsAreNonzero)) or (roundTowardPositive and (not sign) and (decidingBitIsOne or remainingBitsAreNonzero)) or (roundTowardNegative and sign and (decidingBitIsOne or remainingBitsAreNonzero)) else 0
 print("roundBit is " + str(roundBit))
 x2 >>= 48
-print("After truncating: x2 = " + add_point(bin(x2),23))
+print("After truncating: x2 = " + add_point(bin(x2),NSIG))
 x2 += roundBit
-print("After rounding: x2 = " + add_point(bin(x2),23))
+print("After rounding: x2 = " + add_point(bin(x2),NSIG))
 
 # Step 3: Again, if needed, renormalize the rounded result
-if bit(x2,24):
+if bit(x2,(NSIG+1)):
   rexp += 1
   x2 >>= 1
 
-print("After renormalizing: x1 = " + add_point(bin(x2),23) + ", rexp = " + str(rexp))
+print("After renormalizing: x1 = " + add_point(bin(x2),NSIG) + ", rexp = " + str(rexp))
 
 print("Verify product is close to 1:")
 p = sig * x2
-# Add a 2nd "_" to mark the end of 24 bits of precision
-print("- product of significands: " + add_point(add_point(bin(p),46),23+bit(p,47)))
+# Add a 2nd "_" to mark the end of (NSIG+1) bits of precision
+print("- product of significands: " + add_point(add_point(bin(p),46),NSIG+bit(p,47)))
 print("- sum of exponents: " + str(exp+rexp))
 
-if (rexp < -126) or (127 < rexp):
+if (rexp < EMIN) or (EMAX < rexp):
   sys.exit("Reciprocal is not a Normal IEEE 754 number.")
 
 # Output reciprocal as a 32-bit hexadecimal integer:
-sign = 0x80000000 if sign else 0
-print("Reciprocal is " + hex(sign | ((rexp + 127) << 23) | (x2 & 0x7FFFFF)))
+sign = SIGNMASK if sign else 0
+print("Reciprocal is " + hex(sign | ((rexp + BIAS) << NSIG) | (x2 & SIGMASK)))
