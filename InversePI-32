@@ -222,10 +222,10 @@ parser.add_argument("--roundingAttribute", help="Rounding mode for result", choi
 args = parser.parse_args()
 
 # Set the rounding mode flags:
-roundTiesToEven = True if args.roundingAttribute == "roundTiesToEven" else False
-roundTowardPositive = True if args.roundingAttribute == "roundTowardPositive" else False
-roundTowardNegative = True if args.roundingAttribute == "roundTowardNegative" else False
-roundTowardZero = True if args.roundingAttribute == "roundTowardZero" else False
+roundTiesToEven = args.roundingAttribute == "roundTiesToEven"
+roundTowardPositive = args.roundingAttribute == "roundTowardPositive"
+roundTowardNegative = args.roundingAttribute == "roundTowardNegative"
+roundTowardZero = args.roundingAttribute == "roundTowardZero"
 
 #print("roundTiesToEven = " + str(roundTiesToEven))
 #print("roundTowardPositive = " + str(roundTowardPositive))
