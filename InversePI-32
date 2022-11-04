@@ -236,6 +236,15 @@ roundTowardZero = True if args.roundingAttribute == "roundTowardZero" else False
 value = eval(args.value)
 #print("value = " + str(value) + " (" + hex(value) + ")")
 
+hNEXP = 5
+hNSIG = 10
+hBIAS = (1 << (hNEXP-1)) - 1
+hEMAX = hBIAS
+hEMIN = 1 - hBIAS
+hSIGNMASK = 1 << (hNEXP+hNSIG)
+hEXPMASK = (1 << hNEXP) - 1
+hSIGMASK = (1 << hNSIG) - 1
+
 NEXP = 8
 NSIG = 23
 BIAS = (1 << (NEXP-1)) - 1
@@ -264,26 +273,26 @@ sig = (value & SIGMASK) | (1 << NSIG)
 print("sign, exponent, significand: " + str(sign) + " " + str(exp) + " " + add_point(bin(sig),NSIG))
 
 # Get initial guess for the significand of the reciprocal:
-x0 = X0((value>>13) & 0x3FF)
+x0 = X0((value>>(NSIG-hNSIG) & hSIGMASK))
 print("x0 = " + add_point(bin(x0),8))
 
 # Iteration 1
 # - pi[1] has NSIG digits to the right of the binary point
 # - x0 has 8 digits to the right of the binary point
-# - x1a has 31 digits to the right of the binary point
+# - x1a has NSIG+8 digits to the right of the binary point
 x1a = sig * x0 # D * x0
-#print(add_point(bin(x1a),31))
+#print(add_point(bin(x1a),NSIG+8))
 
-x1b = 0b10_0000000000000000000000000000000 - x1a # 2 - D*x0
-#print(add_point(bin(x1b),31))
+x1b = (2 << (NSIG+8)) - x1a # 2 - D*x0
+#print(add_point(bin(x1b),NSIG+8))
 
-# x1 has 39 digits to the right of the binary point
+# x1 has NSIG+2*8 digits to the right of the binary point
 x1 = x1b * x0 # x1 = (2 - D*x0) * x0
-print("x1 = " + add_point(bin(x1),39))
+print("x1 = " + add_point(bin(x1),(NSIG+2*8)))
 
 # Truncate x1 to NSIG+1 bits to the right of the binary point
-x1 >>= 39 - (NSIG+1)
-print("After truncating x1 to 25 bits = " + add_point(bin(x1),(NSIG+1)))
+x1 >>= (NSIG+2*8) - (NSIG+1) # 16 - 1
+print("After truncating x1 to NSIG+1 bits to the right of the binary point = " + add_point(bin(x1),(NSIG+1)))
 
 # Iteration 2
 # - pi[1] has NSIG digits to the right of the binary point
