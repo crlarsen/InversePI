@@ -297,31 +297,31 @@ print("After truncating x1 to NSIG+1 bits to the right of the binary point = " +
 # Iteration 2
 # - pi[1] has NSIG digits to the right of the binary point
 # - x1 has (NSIG+1) digits to the right of the binary point
-# - x2a has 47 digits to the right of the binary point
+# - x2a has 2*NSIG+1 digits to the right of the binary point
 x2a = sig * x1 # D * x1
-#print(add_point(bin(x2a),47))
+#print(add_point(bin(x2a),2*NSIG+1))
 
-x2b = 0b10_00000000000000000000000000000000000000000000000 - x2a # 2 - D*x1
-#print(add_point(bin(x2b),47))
+x2b = (2 << (2*NSIG+1)) - x2a # 2 - D*x1
+#print(add_point(bin(x2b),2*NSIG+1))
 
-# x2 has 71 digits to the right of the binary point
+# x2 has 3*NSIG+2 digits to the right of the binary point
 x2 = x2b * x1 # x2 = (2 - D*x1) * x1
-print("x2 = " + add_point(bin(x2),71))
+print("x2 = " + add_point(bin(x2),3*NSIG+2))
 
 # Normalize, if needed
-if not bit(x2,71):
+if not bit(x2,3*NSIG+2):
   rexp -= 1
   x2 <<= 1
-print("After normalizing: x2 = " + add_point(add_point(add_point(add_point(bin(x2),71),49),48),47) + ", rexp = " + str(rexp))
+print("After normalizing: x2 = " + add_point(add_point(add_point(add_point(bin(x2),3*NSIG+2),2*NSIG+3),2*NSIG+2),2*NSIG+1) + ", rexp = " + str(rexp))
 
 # Round x1 to (NSIG+1) bits:
 # Step 1: Find the values needed to actually perform the rounding
 print("roundingAttribute is " + args.roundingAttribute)
 
-lastKeptBitIsOdd = bit(x2,48) == 1
+lastKeptBitIsOdd = bit(x2,2*NSIG+2) == 1
 print("lastKeptBitIsOdd is " + str(lastKeptBitIsOdd))
 
-decidingBitIsOne = bit(x2,47) == 1
+decidingBitIsOne = bit(x2,2*NSIG+1) == 1
 print("decidingBitIsOne is " + str(decidingBitIsOne))
 
 remainingBitsAreNonzero = (x2 & 0x7FFFFFFFFFFF) != 0
@@ -330,7 +330,7 @@ print("remainingBitsAreNonzero is " + str(remainingBitsAreNonzero))
 # Step 2: Perform the rounding
 roundBit = 1 if (roundTiesToEven and decidingBitIsOne and (lastKeptBitIsOdd or remainingBitsAreNonzero)) or (roundTowardPositive and (not sign) and (decidingBitIsOne or remainingBitsAreNonzero)) or (roundTowardNegative and sign and (decidingBitIsOne or remainingBitsAreNonzero)) else 0
 print("roundBit is " + str(roundBit))
-x2 >>= 48
+x2 >>= 2*NSIG+2
 print("After truncating: x2 = " + add_point(bin(x2),NSIG))
 x2 += roundBit
 print("After rounding: x2 = " + add_point(bin(x2),NSIG))
@@ -345,7 +345,7 @@ print("After renormalizing: x1 = " + add_point(bin(x2),NSIG) + ", rexp = " + str
 print("Verify product is close to 1:")
 p = sig * x2
 # Add a 2nd "_" to mark the end of (NSIG+1) bits of precision
-print("- product of significands: " + add_point(add_point(bin(p),46),NSIG+bit(p,47)))
+print("- product of significands: " + add_point(add_point(bin(p),46),NSIG+bit(p,2*NSIG+1)))
 print("- sum of exponents: " + str(exp+rexp))
 
 if (rexp < EMIN) or (EMAX < rexp):
