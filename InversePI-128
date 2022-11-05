@@ -6,10 +6,10 @@
 # copyright notice.
 #
 # Python script which uses Newton's Method to compute the reciprocal of a
-# binary32 value.
+# binary128 value.
 #
 # This script is not production quality code. It is only Proof Of Concept
-# (POC) code. It expects to receive only IEEE 754 binary32 Normal numbers
+# (POC) code. It expects to receive only IEEE 754 binary128 Normal numbers
 # as input, and to generate only IEEE 754 Normal numbers as output.
 #
 # NO ATTEMPT IS MADE TO HANDLE:
@@ -212,12 +212,13 @@ def add_point(s, n):
 #                        o roundTowardZero.
 #
 # Input:
-#   value: Integer which is to be interpreted as a binary32 value.
+#   value: Integer which is to be interpreted as a binary128 value.
 #          The value may be entered as binary, octal, decimal, or hexadecimal
 #          integer. `value' is optional. If omitted the script will use the
-#          hexadecimal value 0x4248 which is the binary32 approximation for π.
+#          hexadecimal value 0x4000921fb54442d18469898cc51701b8 which is the
+#          binary128 approximation for π.
 parser = argparse.ArgumentParser()
-parser.add_argument("value", help="Compute reciprocal of this binary32 value; default = π", type=str, nargs="?", default="0x4000921fb54442d18469898cc51701b8")
+parser.add_argument("value", help="Compute reciprocal of this binary128 value; default = π", type=str, nargs="?", default="0x4000921fb54442d18469898cc51701b8")
 parser.add_argument("--roundingAttribute", help="Rounding mode for result", choices=["roundTiesToEven", "roundTowardPositive", "roundTowardNegative", "roundTowardZero"], default="roundTiesToEven", required=False)
 args = parser.parse_args()
 
@@ -256,6 +257,8 @@ SIGMASK = (1 << NSIG) - 1
 
 X0WIDTH = 8
 
+DATUM_SIZE = 128
+
 # Extract the sign, exponent, and significand fields.
 # Add the implied leading one bit to the significand.
 sign = (value & SIGNMASK) != 0
@@ -279,7 +282,7 @@ x0 = X0((value>>(NSIG-hNSIG) & hSIGMASK))
 print("x0 = " + add_point(bin(x0),X0WIDTH))
 
 # Iteration 1
-# - pi[2] has NSIG digits to the right of the binary point
+# - pi[3] has NSIG digits to the right of the binary point
 # - x0 has X0WIDTH digits to the right of the binary point
 # - x1a has NSIG+X0WIDTH digits to the right of the binary point
 x1a = sig * x0 # D * x0
@@ -292,85 +295,99 @@ x1b = (2 << (NSIG+X0WIDTH)) - x1a # 2 - D*x0
 x1 = x1b * x0 # x1 = (2 - D*x0) * x0
 print("x1 = " + add_point(bin(x1),(NSIG+2*X0WIDTH)))
 
-# Truncate x1 to NSIG+1 bits to the right of the binary point
-x1 >>= (NSIG+2*X0WIDTH) - (NSIG+1) # 2*X0WIDTH - 1
-print("After truncating x1 to " + str(NSIG+1) + " bits to the right of the binary point = " + add_point(bin(x1),(NSIG+1)))
+# Truncate x1 to DATUM_SIZE bits to the right of the binary point
+x1 >>= NSIG+2*X0WIDTH - DATUM_SIZE
+print("After truncating x1 to " + str(DATUM_SIZE) + " bits to the right of the binary point = " + add_point(bin(x1),(DATUM_SIZE)))
 
 # Iteration 2
-# - pi[2] has NSIG digits to the right of the binary point
-# - x1 has (NSIG+1) digits to the right of the binary point
-# - x2a has 2*NSIG+1 digits to the right of the binary point
+# - pi[3] has NSIG digits to the right of the binary point
+# - x1 has DATUM_SIZE digits to the right of the binary point
+# - x2a has NSIG+DATUM_SIZE digits to the right of the binary point
 x2a = sig * x1 # D * x1
 #print(add_point(bin(x2a),2*NSIG+1))
 
-x2b = (2 << (2*NSIG+1)) - x2a # 2 - D*x1
-#print(add_point(bin(x2b),2*NSIG+1))
+# Truncate x2a to DATUM_SIZE bits to the right of the binary point
+x2a >>= NSIG
+#print(add_point(bin(x2a),DATUM_SIZE))
 
-# x2 has 3*NSIG+2 digits to the right of the binary point
+x2b = (2 << DATUM_SIZE) - x2a # 2 - D*x1
+#print(add_point(bin(x2b),DATUM_SIZE))
+
+# x2 has 2*DATUM_SIZE digits to the right of the binary point
 x2 = x2b * x1 # x2 = (2 - D*x1) * x1
-print("x2 = " + add_point(bin(x2),3*NSIG+2))
+print("x2 = " + add_point(bin(x2),2*DATUM_SIZE))
 
-# Truncate x2 to NSIG+1 bits to the right of the binary point
-x2 >>= (3*NSIG+2) - (NSIG+1) # 2*NSIG + 1
-print("After truncating x2 to " + str(NSIG+1) + " bits to the right of the binary point = " + add_point(bin(x2),(NSIG+1)))
-
+# Truncate x2 to DATUM_SIZE bits to the right of the binary point
+x2 >>= DATUM_SIZE
+print("After truncating x2 to " + str(DATUM_SIZE) + " bits to the right of the binary point = " + add_point(bin(x2),(DATUM_SIZE)))
 
 # Iteration 3
-# - pi[2] has NSIG digits to the right of the binary point
-# - x2 has (NSIG+1) digits to the right of the binary point
-# - x3a has 2*NSIG+1 digits to the right of the binary point
+# - pi[3] has NSIG digits to the right of the binary point
+# - x2 has DATUM_SIZE digits to the right of the binary point
+# - x3a has NSIG+DATUM_SIZE digits to the right of the binary point
 x3a = sig * x2 # D * x2
 #print(add_point(bin(x3a),2*NSIG+1))
 
-x3b = (2 << (2*NSIG+1)) - x3a # 2 - D*x2
-#print(add_point(bin(x3b),2*NSIG+1))
+# Truncate x3a to DATUM_SIZE bits to the right of the binary point
+x3a >>= NSIG
+#print(add_point(bin(x3a),DATUM_SIZE))
 
-# x3 has 3*NSIG+2 digits to the right of the binary point
+x3b = (2 << DATUM_SIZE) - x3a # 2 - D*x2
+#print(add_point(bin(x3b),DATUM_SIZE))
+
+# x3 has 2*DATUM_SIZE digits to the right of the binary point
 x3 = x3b * x2 # x3 = (2 - D*x2) * x2
-print("x3 = " + add_point(bin(x3),3*NSIG+2))
+print("x3 = " + add_point(bin(x3),2*DATUM_SIZE))
 
-# Truncate x3 to NSIG+1 bits to the right of the binary point
-x3 >>= (3*NSIG+2) - (NSIG+1) # 2*NSIG + 1
-print("After truncating x3 to " + str(NSIG+1) + " bits to the right of the binary point = " + add_point(bin(x3),(NSIG+1)))
+# Truncate x3 to DATUM_SIZE bits to the right of the binary point
+x3 >>= DATUM_SIZE
+print("After truncating x3 to " + str(DATUM_SIZE) + " bits to the right of the binary point = " + add_point(bin(x3),(DATUM_SIZE)))
 
-
-# Iteration 3
-# - pi[2] has NSIG digits to the right of the binary point
-# - x3 has (NSIG+1) digits to the right of the binary point
-# - x4a has 2*NSIG+1 digits to the right of the binary point
+# Iteration 4
+# - pi[3] has NSIG digits to the right of the binary point
+# - x3 has DATUM_SIZE digits to the right of the binary point
+# - x4a has NSIG+DATUM_SIZE digits to the right of the binary point
 x4a = sig * x3 # D * x3
 #print(add_point(bin(x4a),2*NSIG+1))
 
-x4b = (2 << (2*NSIG+1)) - x4a # 2 - D*x3
-#print(add_point(bin(x4b),2*NSIG+1))
+# Truncate x4a to DATUM_SIZE bits to the right of the binary point
+x4a >>= NSIG
+#print(add_point(bin(x4a),DATUM_SIZE))
 
-# x4 has 3*NSIG+2 digits to the right of the binary point
+x4b = (2 << DATUM_SIZE) - x4a # 2 - D*x3
+#print(add_point(bin(x4b),DATUM_SIZE))
+
+# x4 has 2*DATUM_SIZE digits to the right of the binary point
 x4 = x4b * x3 # x4 = (2 - D*x3) * x3
-print("x4 = " + add_point(bin(x4),3*NSIG+2))
+print("x4 = " + add_point(bin(x4),2*DATUM_SIZE))
+
+# Truncate x4 to DATUM_SIZE bits to the right of the binary point
+x4 >>= DATUM_SIZE
+print("After truncating x4 to " + str(DATUM_SIZE) + " bits to the right of the binary point = " + add_point(bin(x4),(DATUM_SIZE)))
 
 # Normalize, if needed
-if not bit(x4,3*NSIG+2):
+if not bit(x4,DATUM_SIZE):
   rexp -= 1
   x4 <<= 1
-print("After normalizing: x4 = " + add_point(add_point(add_point(add_point(bin(x4),3*NSIG+2),2*NSIG+3),2*NSIG+2),2*NSIG+1) + ", rexp = " + str(rexp))
+print("After normalizing: x4 = " + add_point(add_point(add_point(add_point(bin(x4),DATUM_SIZE),DATUM_SIZE+1-NSIG),DATUM_SIZE-NSIG),DATUM_SIZE-1-NSIG) + ", rexp = " + str(rexp))
 
 # Round x4 to (NSIG+1) bits:
 # Step 1: Find the values needed to actually perform the rounding
 print("roundingAttribute is " + args.roundingAttribute)
 
-lastKeptBitIsOdd = bit(x4,2*NSIG+2) == 1
+lastKeptBitIsOdd = bit(x4,DATUM_SIZE-NSIG) == 1
 print("lastKeptBitIsOdd is " + str(lastKeptBitIsOdd))
 
-decidingBitIsOne = bit(x4,2*NSIG+1) == 1
+decidingBitIsOne = bit(x4,DATUM_SIZE-1-NSIG) == 1
 print("decidingBitIsOne is " + str(decidingBitIsOne))
 
-remainingBitsAreNonzero = (x4 & ((1 << (2*NSIG+1)) - 1)) != 0
+remainingBitsAreNonzero = (x4 & ((1 << (DATUM_SIZE-1-NSIG)) - 1)) != 0
 print("remainingBitsAreNonzero is " + str(remainingBitsAreNonzero))
 
 # Step 2: Perform the rounding
 roundBit = 1 if (roundTiesToEven and decidingBitIsOne and (lastKeptBitIsOdd or remainingBitsAreNonzero)) or (roundTowardPositive and (not sign) and (decidingBitIsOne or remainingBitsAreNonzero)) or (roundTowardNegative and sign and (decidingBitIsOne or remainingBitsAreNonzero)) else 0
 print("roundBit is " + str(roundBit))
-x4 >>= 2*NSIG+2
+x4 >>= DATUM_SIZE - NSIG
 print("After truncating: x4 = " + add_point(bin(x4),NSIG))
 x4 += roundBit
 print("After rounding: x4 = " + add_point(bin(x4),NSIG))
@@ -379,7 +396,6 @@ print("After rounding: x4 = " + add_point(bin(x4),NSIG))
 if bit(x4,(NSIG+1)):
   rexp += 1
   x4 >>= 1
-
 print("After renormalizing: x4 = " + add_point(bin(x4),NSIG) + ", rexp = " + str(rexp))
 
 print("Verify product is close to 1:")
