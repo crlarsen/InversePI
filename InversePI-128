@@ -280,13 +280,12 @@ print("sign, exponent, significand: " + str(sign) + " " + str(exp) + " " + add_p
 x0 = X0((value>>(NSIG-hNSIG) & hSIGMASK)) << (NSIG+1-X0WIDTH)
 print("x0 = " + add_point(bin(x0),NSIG+1))
 
-# Calculate smallest power of 2 greater than NSIG. The value clog2 is
-# used to control how many iterations of Newton's Method are required
-# to get maximum accuracy for this floating point data format.
+# Calculate smallest power of 2 ≥ NSIG+1. The value clog2 is
+# used to control how many iterations of Newton's Method are
+# required to get maximum accuracy for this floating point data
+# format.
 clog2 = 0
-tmp = NSIG
-while tmp != 0:
-  tmp >>= 1
+while (NSIG+1) > (1 << clog2): # (NSIG+1) > (2**clog2)
   clog2 += 1
 
 for i in range(clog2-3):
